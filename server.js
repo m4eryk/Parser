@@ -29,41 +29,41 @@ app.listen(3000, function(){
 })
 
 
-function parseJsonToXml(o) {
+function parseJsonToXml(obj) {
 
-    var toXml = function(v, name, ind) {
+    var toXml = function(value, name, ind) {
        var xml = "";
-       if (v instanceof Array) {
-          for (var i=0, n=v.length; i<n; i++)
-             xml += ind + toXml(v[i], name, ind+"\t") + "\n";
+       if (value instanceof Array) {
+          for (var i=0, n=value.length; i<n; i++)
+             xml += ind + toXml(value[i], name, ind+"\t") + "\n";
        }
-       else if (typeof(v) == "object") {
+       else if (typeof(value) == "object") {
           var hasChild = false;
           xml += ind + "<" + name;
-          for (var m in v) {
-             if (m.charAt(0) == "@")
-                xml += " " + m.substr(1) + "=\"" + v[m].toString() + "\"";
+          for (var val in value) {
+             if (val.charAt(0) == "@")
+                xml += " " + val.substr(1) + "=\"" + value[val].toString() + "\"";
              else
                 hasChild = true;
           }
           xml += hasChild ? ">" : "/>";
           if (hasChild) {
-             for (var m in v) {
-                if (m == "#text")
-                   xml += v[m];
-                else if (m.charAt(0) != "@")
-                   xml += toXml(v[m], m, ind+"\t");
+             for (var val in value) {
+                if (val == "#text")
+                   xml += value[val];
+                else if (val.charAt(0) != "@")
+                   xml += toXml(value[val], val, ind+"\t");
              }
              xml += (xml.charAt(xml.length-1)=="\n"?ind:"") + "</" + name + ">";
           }
        }
        else {
-          xml += ind + "<" + name + ">" + v.toString() +  "</" + name + ">";
+          xml += ind + "<" + name + ">" + value.toString() +  "</" + name + ">";
        }
        return xml;
     }, xml="";
-    for (var m in o)
-       xml += toXml(o[m], m, "");
+    for (var o in obj)
+       xml += toXml(obj[o], o, "");
     return xml.replace(/\t/g, '\n');
 }
 
@@ -74,114 +74,134 @@ function parseXmlToJson(xml) {
        toObj: function(xml) {
         console.log("toObj");
         
-          var o = {};
+          var obj = {};
           if (xml.nodeType==1) {   // проверка наличая узла
              if (xml.attributes.length)   // есть ли атрибут
                 for (var i=0; i<xml.attributes.length; i++)
-                   o["@"+xml.attributes[i].nodeName] = (xml.attributes[i].nodeValue||"").toString();
+                   obj["@"+xml.attributes[i].nodeName] = (xml.attributes[i].nodeValue||"").toString();
              if (xml.firstChild) { // наличее дочерних узлов
                 var textChild=0, hasElementChild=false;
-                for (var n=xml.firstChild; n; n=n.nextSibling) {
-                   if (n.nodeType==1) hasElementChild = true;
-                   else if (n.nodeType==3 && n.nodeValue.match(/[^ \f\n\r\t\v]/)) textChild++; //текст с пробелами
+                for (var node=xml.firstChild; node; node=node.nextSibling) {
+                   if (node.nodeType==1) hasElementChild = true;
+                   else if (node.nodeType==3 && node.nodeValue.match(/[^ \f\n\r\t\v]/)) textChild++; //текст с пробелами
                 }
-                if (hasElementChild) {
+                if (hasElementCodehild) {
                    if (textChild < 2 ) { // только текстовый узел
                       console.log(textChild);
                       X.removeWhite(xml);
-                      for (var n=xml.firstChild; n; n=n.nextSibling) {
-                         if (n.nodeType == 3)  // проверка
-                            o["#text"] = X.escape(n.nodeValue);
-                         else if (o[n.nodeName]) {  // частое появление 
-                               if (o[n.nodeName] instanceof Array)
-                                  o[n.nodeName][o[n.nodeName].length] = X.toObj(n);
+                      for (var node=xml.firstChild; node; node=node.nextSibling) {
+                         if (node.nodeType == 3)  // проверка
+                            obj["#text"] = X.escape(node.nodeValue);
+                         else if (obj[node.nodeName]) {  // частое появление 
+                               if (obj[node.nodeName] instanceof Array)
+                                  obj[node.nodeName][obj[node.nodeName].length] = X.toObj(node);
                                else
-                                  o[n.nodeName] = [o[n.nodeName], X.toObj(n)];
+                                  obj[n.nodeName] = [obj[node.nodeName], X.toObj(node)];
                             }
-                         else  // первое появление ? 
-                            o[n.nodeName] = X.toObj(n);
+                         else  // первоеode появление ? 
+                            obj[node.nodeName] = X.toObj(node);
                       }
                    }
                 }
                 else if (textChild) { //текст 
                    if (!xml.attributes.length)
-                      o = X.escape(X.innerXml(xml));
+                      obj = X.escape(X.innerXml(xml));
                    else
-                      o["#text"] = X.escape(X.innerXml(xml));
+                      obj["#text"] = X.escape(X.innerXml(xml));
                 }
              }
              if (!xml.attributes.length && !xml.firstChild) o = null;
           }
-          return o;
+          return obj;
        },
-       toJson: function(o, name, ind) {
+       toJson: function(obj, name, ind) {
           var json = name ? ("\""+name+"\"") : "";
-          if (typeof(o) == "object") {
+          if (typeof(obj) == "object") {
              var arr = [];
-             for (var m in o)
+             for (var m in obj)
                 arr[arr.length] = X.toJson(o[m], m, ind+"\t");
              json += (name? ":{" : "{") + (arr.length > 1 ? ("\n"+ind+"\t"+arr.join(",\n"+ind+"\t")+"\n"+ind) : arr.join("")) + "}";
           }
           return json;
        },
        innerXml: function(node) {
-          var s = ""
+          var str = ""
              var asXml = function(n) { // в хмл
-                var s = "";
+                var str = "";
                 if (n.nodeType == 1) {
-                   s += "<" + n.nodeName;
+                   str += "<" + n.nodeName;
                    for (var i=0; i<n.attributes.length;i++)
-                      s += " " + n.attributes[i].nodeName + "=\"" + (n.attributes[i].nodeValue||"").toString() + "\"";
+                      str += " " + n.attributes[i].nodeName + "=\"" + (n.attributes[i].nodeValue||"").toString() + "\"";
                    if (n.firstChild) {
-                      s += ">";
+                      str += ">";
                       for (var c=n.firstChild; c; c=c.nextSibling)
-                         s += asXml(c);
-                      s += "</"+n.nodeName+">";
+                         str += asXml(c);
+                      str += "</"+n.nodeName+">";
                    }
                    else
-                      s += "/>";
+                      str += "/>";
                 }
                 else if (n.nodeType == 3)
-                   s += n.nodeValue;
-                return s;
+                   str += n.nodeValue;
+                return str;
              };
              for (var c=node.firstChild; c; c=c.nextSibling)
-                s += asXml(c);
+                str += asXml(c);
           
-          return s;
+          return str;
        },
        escape: function(txt) {
           return txt.replace(/[\\]/g, "\\\\").replace(/[\"]/g, '\\"').replace(/[\n]/g, '\\n').replace(/[\r]/g, '\\r'); //проверка
        },
-       removeWhite: function(e) {
-        console.log(e);
-        e.normalize;
-          for (var n = e.firstChild; n; ) {
-             if (n.nodeType == 3) {  //тектс узел 
-                if (!n.nodeValue.match(/[^ \f\n\r\t\v]/)) { // чистый тектст
+       removeWhite: function(val) {
+        console.log(val);
+        val.normalize;
+          for (var node = e.firstChild; n; ) {
+             if (node.nodeType == 3) {  //тектс узел 
+                if (!node.nodeValue.match(/[^ \f\n\r\t\v]/)) { // чистый тектст
                    var nxt = n.nextSibling;
-                   e.removeChild(n);
-                   n = nxt;
+                   val.removeChild(node);
+                   node = nxt;
                 }
                 else
-                   n = n.nextSibling;
+                   node = node.nextSibling;
              }
-             else if (n.nodeType == 1) {  // узел
-                X.removeWhite(n);
-                n = n.nextSibling;
+             else if (node.nodeType == 1) {  // узел
+                X.removeWhite(node);
+                node = node.nextSibling;
              }
           
           }
-          return e;
+          return val;
        }
     };
     if (xml.nodeType == 9) {
+       
        xml = xml.documentElement;
        console.log(xml);
     }
     var json = X.toJson(X.toObj(xml), xml.nodeName, "\t");
-    return "{\n" + "\t" +  json.replace(/\t/g, "\t")  + "\n}";
+    return "{\n" + "\t" + json.replace(/\t/g, "\t")  + "\n}";
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
